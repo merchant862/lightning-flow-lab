@@ -1,0 +1,54 @@
+{
+  "nodes": [
+    { "id": "treasury", "alias": "Treasury Node" },
+    { "id": "hub-a", "alias": "Well Connected Hub" },
+    { "id": "hub-b", "alias": "Low Fee Hub" },
+    { "id": "merchant", "alias": "Merchant Node" }
+  ],
+  "channels": [
+    {
+      "id": "treasury-a-1",
+      "node1": "treasury",
+      "node2": "hub-a",
+      "capacityMsat": 900000,
+      "balances": { "treasury": 620000, "hub-a": 280000 },
+      "policies": {
+        "treasury": { "baseFeeMsat": 700, "feeRatePpm": 90, "cltvDelta": 34 },
+        "hub-a": { "baseFeeMsat": 900, "feeRatePpm": 120, "cltvDelta": 40 }
+      }
+    },
+    {
+      "id": "treasury-b-1",
+      "node1": "treasury",
+      "node2": "hub-b",
+      "capacityMsat": 700000,
+      "balances": { "treasury": 420000, "hub-b": 280000 },
+      "policies": {
+        "treasury": { "baseFeeMsat": 500, "feeRatePpm": 65, "cltvDelta": 30 },
+        "hub-b": { "baseFeeMsat": 800, "feeRatePpm": 90, "cltvDelta": 38 }
+      }
+    },
+    {
+      "id": "a-merchant-1",
+      "node1": "hub-a",
+      "node2": "merchant",
+      "capacityMsat": 600000,
+      "balances": { "hub-a": 380000, "merchant": 220000 },
+      "policies": {
+        "hub-a": { "baseFeeMsat": 1000, "feeRatePpm": 100, "cltvDelta": 44 },
+        "merchant": { "baseFeeMsat": 1000, "feeRatePpm": 100, "cltvDelta": 44 }
+      }
+    },
+    {
+      "id": "b-merchant-1",
+      "node1": "hub-b",
+      "node2": "merchant",
+      "capacityMsat": 500000,
+      "balances": { "hub-b": 260000, "merchant": 240000 },
+      "policies": {
+        "hub-b": { "baseFeeMsat": 300, "feeRatePpm": 30, "cltvDelta": 18 },
+        "merchant": { "baseFeeMsat": 1000, "feeRatePpm": 100, "cltvDelta": 44 }
+      }
+    }
+  ]
+}

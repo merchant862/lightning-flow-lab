@@ -1,0 +1,27 @@
+{
+  "name": "lightning-flow-lab",
+  "version": "0.1.0",
+  "description": "A Node.js Lightning Network payment-flow simulator for routing, liquidity policy, accounting, and incident analysis.",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "ln-flow": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "demo": "node src/cli.js quote --network examples/sample-network.json --from treasury --to merchant --amount 250000"
+  },
+  "keywords": [
+    "bitcoin",
+    "lightning",
+    "nodejs",
+    "routing",
+    "liquidity",
+    "payments"
+  ],
+  "author": "Saif Ali",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}
