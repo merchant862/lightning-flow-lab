@@ -1,15 +1,36 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { ChannelGraph, formatMsat, planMultiPartPayment, quoteRoute } from "./index.js";
+import {
+  ChannelGraph,
+  CoreLightningClient,
+  EclairClient,
+  LndRestClient,
+  detectNetwork,
+  formatMsat,
+  planMultiPartPayment,
+  quoteRoute
+} from "./index.js";
 
 const args = parseArgs(process.argv.slice(2));
 
 try {
-  if (args.command !== "quote") {
+  if (args.command === "quote") {
+    await runQuote(args);
+  } else if (args.command === "node-info") {
+    await runNodeInfo(args);
+  } else if (args.command === "import-graph") {
+    await runImportGraph(args);
+  } else {
     printUsage();
     process.exit(args.command ? 1 : 0);
   }
+} catch (error) {
+  console.error(error.message);
+  if (error.details) console.error(JSON.stringify(error.details, null, 2));
+  process.exit(1);
+}
 
+async function runQuote(args) {
   const network = JSON.parse(await readFile(args.network, "utf8"));
   const graph = ChannelGraph.fromJSON(network);
   const request = {
@@ -23,10 +44,30 @@ try {
     request.maxParts > 1 ? planMultiPartPayment(graph, request) : quoteRoute(graph, request);
 
   console.log(JSON.stringify(summarize(result), null, 2));
-} catch (error) {
-  console.error(error.message);
-  if (error.details) console.error(JSON.stringify(error.details, null, 2));
-  process.exit(1);
+}
+
+async function runNodeInfo(args) {
+  const client = buildClient(args);
+  const info = await client.getInfo();
+  console.log(
+    JSON.stringify(
+      {
+        implementation: args.impl,
+        network: detectNetwork(info),
+        id: info.identity_pubkey ?? info.id ?? info.nodeId,
+        alias: info.alias,
+        syncedToChain: info.synced_to_chain ?? info.blockchainSync
+      },
+      null,
+      2
+    )
+  );
+}
+
+async function runImportGraph(args) {
+  const client = buildClient(args);
+  const imported = await client.importGraph({ network: args.network });
+  console.log(JSON.stringify(imported.graph.toJSON(), null, 2));
 }
 
 function summarize(result) {
@@ -64,5 +105,42 @@ function parseArgs(tokens) {
 }
 
 function printUsage() {
-  console.log("Usage: ln-flow quote --network examples/sample-network.json --from treasury --to merchant --amount 250000 [--parts 2]");
+  console.log(`Usage:
+  ln-flow quote --network examples/sample-network.json --from treasury --to merchant --amount 250000 [--parts 2]
+  ln-flow node-info --impl lnd --url https://127.0.0.1:8080 --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon
+  ln-flow import-graph --impl lnd --url https://127.0.0.1:8080 --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon
+  ln-flow import-graph --impl cln --network testnet --lightning-cli lightning-cli
+  ln-flow import-graph --impl eclair --network testnet --url http://127.0.0.1:8080 --password testnet-password`);
+}
+
+function buildClient(args) {
+  if (args.impl === "lnd") {
+    return new LndRestClient({
+      baseUrl: args.url,
+      macaroonPath: expandHome(args.macaroon),
+      rejectUnauthorized: args["reject-unauthorized"] === "true"
+    });
+  }
+
+  if (args.impl === "cln") {
+    return new CoreLightningClient({
+      lightningCli: args["lightning-cli"],
+      network: args.network,
+      rpcFile: args["rpc-file"] ? expandHome(args["rpc-file"]) : undefined
+    });
+  }
+
+  if (args.impl === "eclair") {
+    return new EclairClient({
+      baseUrl: args.url,
+      password: args.password ?? process.env.ECLAIR_API_PASSWORD
+    });
+  }
+
+  throw new TypeError("--impl must be one of: lnd, cln, eclair");
+}
+
+function expandHome(path) {
+  if (!path?.startsWith("~/")) return path;
+  return `${process.env.HOME}${path.slice(1)}`;
 }

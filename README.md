@@ -1,8 +1,10 @@
 # Lightning Flow Lab
 
-Lightning Flow Lab is a small Node.js toolkit for modelling Bitcoin Lightning payment flow. It focuses on the operational parts a payments team cares about: channel liquidity, route fees, multi-part payments, settlement accounting, and failed-payment incident analysis.
+Lightning Flow Lab is a small Node.js toolkit for modelling Bitcoin Lightning payment flow. It can run against static fixtures or import read-only graph data from testnet LND, Core Lightning, and Eclair nodes.
 
-This is not a replacement for LND, Core Lightning, Eclair, or LDK. It is an open-source lab project for experimenting with policies before wiring the same ideas into a real node.
+It focuses on the operational parts a payments team cares about: channel liquidity, route fees, multi-part payments, settlement accounting, and failed-payment incident analysis.
+
+This is not a wallet and it does not send payments. Runtime node adapters are intentionally testnet-only and fail closed if a node reports `mainnet`.
 
 ## Features
 
@@ -12,6 +14,7 @@ This is not a replacement for LND, Core Lightning, Eclair, or LDK. It is an open
 - Multi-part payment planner that splits around constrained liquidity
 - Lightweight ledger view for Lightning settlement/accounting records
 - Incident analyzer for failed payment attempts and risky channel detection
+- Read-only testnet adapters for LND REST, Core Lightning `lightning-cli`, and Eclair HTTP API
 - Zero runtime dependencies; runs on Node.js built-ins
 
 ## Quick Start
@@ -40,6 +43,59 @@ node src/cli.js quote \
   --to merchant \
   --amount 500000 \
   --parts 3
+```
+
+## Testnet Node Adapters
+
+The adapter commands import real channel graph data into the same internal `ChannelGraph` model used by the simulator. They are read-only and guarded by network detection. Allowed networks are `testnet`, `testnet3`, `testnet4`, `signet`, and `regtest`; `mainnet` is rejected.
+
+### LND REST
+
+LND is accessed through its REST API. The client reads `getinfo`, `describegraph`, and local channels, then enriches graph edges with local channel balances when available.
+
+```bash
+node src/cli.js node-info \
+  --impl lnd \
+  --url https://127.0.0.1:8080 \
+  --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon
+```
+
+```bash
+node src/cli.js import-graph \
+  --impl lnd \
+  --url https://127.0.0.1:8080 \
+  --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon
+```
+
+### Core Lightning
+
+Core Lightning is accessed through `lightning-cli`. The client reads `getinfo`, `listchannels`, and `listpeerchannels`.
+
+```bash
+node src/cli.js import-graph \
+  --impl cln \
+  --network testnet \
+  --lightning-cli lightning-cli
+```
+
+If your node uses a custom RPC socket:
+
+```bash
+node src/cli.js import-graph \
+  --impl cln \
+  --network testnet \
+  --rpc-file ~/.lightning/testnet/lightning-rpc
+```
+
+### Eclair
+
+Eclair is accessed through its HTTP API. Pass the API password directly or set `ECLAIR_API_PASSWORD`.
+
+```bash
+ECLAIR_API_PASSWORD=testnet-password node src/cli.js import-graph \
+  --impl eclair \
+  --network testnet \
+  --url http://127.0.0.1:8080
 ```
 
 ## Library Usage
@@ -74,10 +130,16 @@ settleRoute(graph, payment);
 
 ## Roadmap
 
-- Import channel snapshots from LND `describegraph` and Core Lightning `listchannels`
+- Add LDK graph import support
 - Add payment probes and route reliability scoring
 - Export Prometheus-style metrics for liquidity and routing failure trends
 - Add policy recommendations for rebalancing and fee updates
+
+## API References
+
+- LND REST exposes `/v1/getinfo` and `/v1/graph` for node metadata and graph import.
+- Core Lightning `listchannels` returns directed gossip channel entries, and `listpeerchannels` returns local channel state.
+- Eclair exposes HTTP endpoints such as `getinfo`, `allchannels`, `allupdates`, and `usablebalances`.
 
 ## License
 

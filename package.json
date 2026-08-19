@@ -1,7 +1,7 @@
 {
   "name": "lightning-flow-lab",
   "version": "0.1.0",
-  "description": "A Node.js Lightning Network payment-flow simulator for routing, liquidity policy, accounting, and incident analysis.",
+  "description": "A testnet-only Node.js Lightning toolkit for importing LND/Core Lightning/Eclair graphs and modelling routing, liquidity, MPP, accounting, and incidents.",
   "type": "module",
   "main": "src/index.js",
   "bin": {
@@ -17,7 +17,11 @@
     "nodejs",
     "routing",
     "liquidity",
-    "payments"
+    "payments",
+    "lnd",
+    "core-lightning",
+    "eclair",
+    "testnet"
   ],
   "author": "Saif Ali",
   "license": "MIT",

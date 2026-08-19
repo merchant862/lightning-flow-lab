@@ -5,3 +5,7 @@ export { PaymentLedger } from "./accounting.js";
 export { analyzePaymentFailures } from "./incidents.js";
 export { toMsat, msatToSat, formatMsat } from "./money.js";
 export { LightningFlowError, RouteNotFoundError, InsufficientLiquidityError } from "./errors.js";
+export { LndRestClient, mapLndGraph } from "./adapters/lnd.js";
+export { CoreLightningClient, mapCoreLightningGraph } from "./adapters/cln.js";
+export { EclairClient, mapEclairGraph } from "./adapters/eclair.js";
+export { UnsafeNetworkError, assertTestnetOnly, detectNetwork } from "./adapters/testnet-guard.js";
