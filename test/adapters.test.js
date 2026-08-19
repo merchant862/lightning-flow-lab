@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mapCoreLightningGraph, mapEclairGraph, mapLndGraph, assertTestnetOnly, UnsafeNetworkError } from "../src/index.js";
+import { mapCoreLightningGraph, mapEclairGraph, mapLdkGraph, mapLndGraph, assertTestnetOnly, UnsafeNetworkError } from "../src/index.js";
 
 test("blocks mainnet node metadata", () => {
   assert.throws(
@@ -122,4 +122,27 @@ test("maps Eclair graph with usable balance enrichment", () => {
   assert.equal(channel.capacityMsat, 500000);
   assert.equal(channel.balances.local, 300000);
   assert.equal(channel.policies.peer.feeRatePpm, 21);
+});
+
+test("maps LDK channel details into the shared graph model", () => {
+  const graph = mapLdkGraph(
+    [{
+      shortChannelId: "3x3x0",
+      nodeOne: "local",
+      nodeTwo: "peer",
+      capacitySats: "800",
+      counterpartyNodeId: "peer",
+      outboundCapacityMsat: "500000",
+      oneToTwo: { enabled: true, fees: { baseMsat: 12, proportionalMillionths: 25 }, cltvExpiryDelta: 18 },
+      twoToOne: { enabled: false }
+    }],
+    [{ nodeId: "local", alias: "Local" }, { nodeId: "peer", alias: "Peer" }],
+    "local"
+  );
+
+  const channel = graph.channels.get("3x3x0");
+  assert.equal(channel.capacityMsat, 800000);
+  assert.equal(channel.balances.local, 500000);
+  assert.equal(channel.policies.local.feeRatePpm, 25);
+  assert.equal(channel.policies.peer.disabled, true);
 });

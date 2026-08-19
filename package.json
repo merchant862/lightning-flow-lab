@@ -21,10 +21,15 @@
     "lnd",
     "core-lightning",
     "eclair",
+    "ldk",
     "testnet"
   ],
   "author": "Saif Ali",
   "license": "MIT",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.13.4",
+    "@grpc/proto-loader": "^0.7.15"
+  },
   "engines": {
     "node": ">=20"
   }

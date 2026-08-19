@@ -15,6 +15,7 @@ This is not a wallet and it does not send payments. Runtime node adapters are in
 - Lightweight ledger view for Lightning settlement/accounting records
 - Incident analyzer for failed payment attempts and risky channel detection
 - Read-only testnet adapters for LND REST, Core Lightning `lightning-cli`, and Eclair HTTP API
+- Read-only testnet adapter for LDK Server gRPC
 - Zero runtime dependencies; runs on Node.js built-ins
 
 ## Quick Start
@@ -98,6 +99,19 @@ ECLAIR_API_PASSWORD=testnet-password node src/cli.js import-graph \
   --url http://127.0.0.1:8080
 ```
 
+### LDK Server
+
+LDK is integrated through the official LDK Server gRPC API. The adapter reads node metadata and the network graph using the read-only graph RPCs. LDK Server's `api.proto` is supplied by the LDK Server checkout, and its self-signed TLS certificate must be pinned.
+
+```bash
+LDK_SERVER_API_KEY=your-api-key node src/cli.js import-graph \
+  --impl ldk \
+  --network testnet \
+  --address 127.0.0.1:3536 \
+  --proto /path/to/ldk-server/ldk-server-grpc/src/proto/api.proto \
+  --tls-cert ~/.ldk-server/tls.crt
+```
+
 ## Library Usage
 
 ```js
@@ -130,7 +144,7 @@ settleRoute(graph, payment);
 
 ## Roadmap
 
-- Add LDK graph import support
+- Add direct embedded LDK Node Rust bridge support
 - Add payment probes and route reliability scoring
 - Export Prometheus-style metrics for liquidity and routing failure trends
 - Add policy recommendations for rebalancing and fee updates
@@ -140,6 +154,7 @@ settleRoute(graph, payment);
 - LND REST exposes `/v1/getinfo` and `/v1/graph` for node metadata and graph import.
 - Core Lightning `listchannels` returns directed gossip channel entries, and `listpeerchannels` returns local channel state.
 - Eclair exposes HTTP endpoints such as `getinfo`, `allchannels`, `allupdates`, and `usablebalances`.
+- LDK Server exposes authenticated gRPC graph methods such as `GraphListChannels`, `GraphGetChannel`, `GraphListNodes`, and `GraphGetNode`.
 
 ## License
 

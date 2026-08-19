@@ -8,4 +8,5 @@ export { LightningFlowError, RouteNotFoundError, InsufficientLiquidityError } fr
 export { LndRestClient, mapLndGraph } from "./adapters/lnd.js";
 export { CoreLightningClient, mapCoreLightningGraph } from "./adapters/cln.js";
 export { EclairClient, mapEclairGraph } from "./adapters/eclair.js";
+export { LdkServerClient, mapLdkGraph } from "./adapters/ldk.js";
 export { UnsafeNetworkError, assertTestnetOnly, detectNetwork } from "./adapters/testnet-guard.js";

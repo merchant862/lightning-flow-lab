@@ -4,6 +4,7 @@ import {
   ChannelGraph,
   CoreLightningClient,
   EclairClient,
+  LdkServerClient,
   LndRestClient,
   detectNetwork,
   formatMsat,
@@ -110,7 +111,8 @@ function printUsage() {
   ln-flow node-info --impl lnd --url https://127.0.0.1:8080 --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon
   ln-flow import-graph --impl lnd --url https://127.0.0.1:8080 --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon
   ln-flow import-graph --impl cln --network testnet --lightning-cli lightning-cli
-  ln-flow import-graph --impl eclair --network testnet --url http://127.0.0.1:8080 --password testnet-password`);
+  ln-flow import-graph --impl eclair --network testnet --url http://127.0.0.1:8080 --password testnet-password
+  LDK_SERVER_API_KEY=your-api-key ln-flow import-graph --impl ldk --network testnet --address 127.0.0.1:3536 --proto /path/to/api.proto --tls-cert ~/.ldk-server/tls.crt`);
 }
 
 function buildClient(args) {
@@ -137,7 +139,17 @@ function buildClient(args) {
     });
   }
 
-  throw new TypeError("--impl must be one of: lnd, cln, eclair");
+  if (args.impl === "ldk") {
+    return new LdkServerClient({
+      address: args.address,
+      apiKey: args["api-key"] ?? process.env.LDK_SERVER_API_KEY,
+      protoPath: expandHome(args.proto),
+      tlsCertPath: expandHome(args["tls-cert"]),
+      rejectUnauthorized: args["reject-unauthorized"] !== "false"
+    });
+  }
+
+  throw new TypeError("--impl must be one of: lnd, cln, eclair, ldk");
 }
 
 function expandHome(path) {
