@@ -21,6 +21,12 @@ try {
     await runNodeInfo(args);
   } else if (args.command === "import-graph") {
     await runImportGraph(args);
+  } else if (args.command === "pay") {
+    await runPay(args);
+  } else if (args.command === "open-channel") {
+    await runOpenChannel(args);
+  } else if (args.command === "close-channel") {
+    await runCloseChannel(args);
   } else {
     printUsage();
     process.exit(args.command ? 1 : 0);
@@ -71,6 +77,42 @@ async function runImportGraph(args) {
   console.log(JSON.stringify(imported.graph.toJSON(), null, 2));
 }
 
+async function runPay(args) {
+  const client = buildClient(args);
+  console.log(JSON.stringify(await client.payInvoice(args.invoice, { network: args.network, feeLimitSat: numberArg(args, "fee-limit-sat") }), null, 2));
+}
+
+async function runOpenChannel(args) {
+  const client = buildClient(args);
+  console.log(JSON.stringify(await client.openChannel({
+    nodePubkey: args.peer,
+    nodeId: args.peer,
+    address: args.address,
+    localAmountSat: numberArg(args, "amount"),
+    amountSat: numberArg(args, "amount"),
+    announce: args.announce !== "false"
+  }, { network: args.network }), null, 2));
+}
+
+async function runCloseChannel(args) {
+  const client = buildClient(args);
+  const channel = args.channel;
+  const [fundingTxid, outputIndex] = String(channel).split(":");
+  console.log(JSON.stringify(await client.closeChannel({
+    channelId: channel,
+    fundingTxid,
+    outputIndex,
+    counterpartyNodeId: args.peer,
+    force: args.force === "true"
+  }, { network: args.network }), null, 2));
+}
+
+function numberArg(args, name) {
+  const value = Number(args[name]);
+  if (!Number.isSafeInteger(value) || value < 0) throw new TypeError(`--${name} must be a non-negative integer`);
+  return value;
+}
+
 function summarize(result) {
   if (result.parts) {
     return {
@@ -112,7 +154,10 @@ function printUsage() {
   ln-flow import-graph --impl lnd --url https://127.0.0.1:8080 --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon
   ln-flow import-graph --impl cln --network testnet --lightning-cli lightning-cli
   ln-flow import-graph --impl eclair --network testnet --url http://127.0.0.1:8080 --password testnet-password
-  LDK_SERVER_API_KEY=your-api-key ln-flow import-graph --impl ldk --network testnet --address 127.0.0.1:3536 --proto /path/to/api.proto --tls-cert ~/.ldk-server/tls.crt`);
+  LDK_SERVER_API_KEY=your-api-key ln-flow import-graph --impl ldk --network testnet --address 127.0.0.1:3536 --proto /path/to/api.proto --tls-cert ~/.ldk-server/tls.crt
+  ln-flow pay --impl lnd --network testnet --url https://127.0.0.1:8080 --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon --invoice lntb1...
+  ln-flow open-channel --impl cln --network testnet --lightning-cli lightning-cli --peer 02... --amount 100000
+  ln-flow close-channel --impl eclair --network testnet --url http://127.0.0.1:8080 --password testnet-password --channel 123x1x0 [--force]`);
 }
 
 function buildClient(args) {

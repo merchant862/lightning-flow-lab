@@ -4,7 +4,7 @@ Lightning Flow Lab is a small Node.js toolkit for modelling Bitcoin Lightning pa
 
 It focuses on the operational parts a payments team cares about: channel liquidity, route fees, multi-part payments, settlement accounting, and failed-payment incident analysis.
 
-This is not a wallet and it does not send payments. Runtime node adapters are intentionally testnet-only and fail closed if a node reports `mainnet`.
+This is not a wallet. Runtime node adapters are intentionally testnet-only and fail closed if a node reports `mainnet`. Write operations require explicit CLI commands and should only be used with disposable testnet funds.
 
 ## Features
 
@@ -16,6 +16,7 @@ This is not a wallet and it does not send payments. Runtime node adapters are in
 - Incident analyzer for failed payment attempts and risky channel detection
 - Read-only testnet adapters for LND REST, Core Lightning `lightning-cli`, and Eclair HTTP API
 - Read-only testnet adapter for LDK Server gRPC
+- Testnet-only payment, channel-open, cooperative-close, and force-close operations across adapters
 - Zero runtime dependencies; runs on Node.js built-ins
 
 ## Quick Start
@@ -111,6 +112,33 @@ LDK_SERVER_API_KEY=your-api-key node src/cli.js import-graph \
   --proto /path/to/ldk-server/ldk-server-grpc/src/proto/api.proto \
   --tls-cert ~/.ldk-server/tls.crt
 ```
+
+## Testnet Write Operations
+
+The adapters expose the common operational actions below. Every write call fetches node metadata first and rejects mainnet. Use a restricted testnet credential where the node supports it, and never put secrets directly in shell history.
+
+```bash
+node src/cli.js pay --impl lnd --network testnet \
+  --url https://127.0.0.1:8080 \
+  --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon \
+  --invoice lntb1...
+```
+
+```bash
+node src/cli.js open-channel --impl cln --network testnet \
+  --lightning-cli lightning-cli \
+  --peer 02... \
+  --amount 100000
+```
+
+```bash
+node src/cli.js close-channel --impl eclair --network testnet \
+  --url http://127.0.0.1:8080 \
+  --password "$ECLAIR_API_PASSWORD" \
+  --channel 123x1x0
+```
+
+Pass `--force true` only when a cooperative close is not possible. Force closing can create on-chain delays and fees.
 
 ## Library Usage
 

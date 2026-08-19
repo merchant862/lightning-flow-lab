@@ -1,5 +1,5 @@
 import { ChannelGraph } from "../graph.js";
-import { readHexFile, requestJson } from "./http.js";
+import { readHexFile, requestJson, requestJsonLines } from "./http.js";
 import { parseMsat, satsToMsat } from "./msat.js";
 import { assertTestnetOnly } from "./testnet-guard.js";
 
@@ -22,6 +22,37 @@ export class LndRestClient {
 
   async listChannels() {
     return this.get("/v1/channels");
+  }
+
+  async payInvoice(paymentRequest, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.post("/v2/router/send", {
+      payment_request: paymentRequest,
+      fee_limit_sat: options.feeLimitSat ?? 0,
+      timeout_seconds: options.timeoutSeconds ?? 60
+    }, true);
+  }
+
+  async openChannel({ nodePubkey, localAmountSat, pushSat = 0, targetConf, satPerVbyte, announce = true }, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.post("/v1/channels", {
+      node_pubkey: nodePubkey,
+      local_funding_amount: localAmountSat,
+      push_sat: pushSat,
+      target_conf: targetConf,
+      sat_per_vbyte: satPerVbyte,
+      private: !announce
+    });
+  }
+
+  async closeChannel({ fundingTxid, outputIndex, force = false, targetConf, satPerVbyte }, options = {}) {
+    await this.assertTestnet(options.network);
+    const query = new URLSearchParams({
+      force: String(force),
+      ...(targetConf === undefined ? {} : { target_conf: String(targetConf) }),
+      ...(satPerVbyte === undefined ? {} : { sat_per_vbyte: String(satPerVbyte) })
+    });
+    return this.delete(`/v1/channels/${fundingTxid}/${outputIndex}?${query}`);
   }
 
   async importGraph(options = {}) {
@@ -49,6 +80,32 @@ export class LndRestClient {
       headers: { "Grpc-Metadata-macaroon": macaroon },
       rejectUnauthorized: this.rejectUnauthorized
     });
+  }
+
+  async post(path, body, stream = false) {
+    const macaroon = await readHexFile(this.macaroonPath);
+    const request = {
+      method: "POST",
+      headers: { "Grpc-Metadata-macaroon": macaroon, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      rejectUnauthorized: this.rejectUnauthorized
+    };
+    return stream
+      ? requestJsonLines(`${this.baseUrl}${path}`, request)
+      : requestJson(`${this.baseUrl}${path}`, request);
+  }
+
+  async delete(path) {
+    const macaroon = await readHexFile(this.macaroonPath);
+    return requestJson(`${this.baseUrl}${path}`, {
+      method: "DELETE",
+      headers: { "Grpc-Metadata-macaroon": macaroon },
+      rejectUnauthorized: this.rejectUnauthorized
+    });
+  }
+
+  async assertTestnet(network) {
+    return assertTestnetOnly("lnd", await this.getInfo(), network);
   }
 }
 

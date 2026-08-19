@@ -26,6 +26,21 @@ export class CoreLightningClient {
     return this.call("listpeerchannels");
   }
 
+  async payInvoice(invoice, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.call("pay", [invoice]);
+  }
+
+  async openChannel({ nodeId, amountSat, announce = true }, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.call("fundchannel", [nodeId, amountSat]);
+  }
+
+  async closeChannel({ channelId, unilateralTimeout = 0 }, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.call("close", [channelId, unilateralTimeout]);
+  }
+
   async importGraph(options = {}) {
     const info = await this.getInfo();
     const network = assertTestnetOnly("core-lightning", info, options.network ?? this.network);
@@ -53,6 +68,10 @@ export class CoreLightningClient {
       maxBuffer: 20 * 1024 * 1024
     });
     return JSON.parse(stdout);
+  }
+
+  async assertTestnet(network) {
+    return assertTestnetOnly("core-lightning", await this.getInfo(), network ?? this.network);
   }
 }
 

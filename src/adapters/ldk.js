@@ -36,6 +36,30 @@ export class LdkServerClient {
     return this.call("ListChannels", {});
   }
 
+  async payInvoice(invoice, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.call("Bolt11Send", { invoice, amountMsat: options.amountMsat });
+  }
+
+  async openChannel({ nodePubkey, address, amountSat, announce = true }, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.call("OpenChannel", {
+      nodePubkey,
+      address,
+      channelAmountSats: amountSat,
+      announceChannel: announce
+    });
+  }
+
+  async closeChannel({ channelId, counterpartyNodeId, force = false }, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.call(force ? "ForceCloseChannel" : "CloseChannel", {
+      userChannelId: channelId,
+      counterpartyNodeId,
+      ...(force ? { forceCloseReason: "operator_requested" } : {})
+    });
+  }
+
   async importGraph(options = {}) {
     const info = await this.getInfo();
     const network = assertTestnetOnly("ldk", normalizeLdkInfo(info), options.network);
@@ -88,6 +112,10 @@ export class LdkServerClient {
   async getClient() {
     if (!this.clientPromise) this.clientPromise = loadGrpcClient(this);
     return this.clientPromise;
+  }
+
+  async assertTestnet(network) {
+    return assertTestnetOnly("ldk", normalizeLdkInfo(await this.getInfo()), network);
   }
 }
 

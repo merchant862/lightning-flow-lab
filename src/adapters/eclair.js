@@ -27,6 +27,21 @@ export class EclairClient {
     return this.post("/usablebalances");
   }
 
+  async payInvoice(invoice, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.post("/payinvoice", { invoice });
+  }
+
+  async openChannel({ nodeId, address, amountSat }, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.post("/open", { nodeId, address, fundingSatoshis: amountSat });
+  }
+
+  async closeChannel({ channelId, force = false }, options = {}) {
+    await this.assertTestnet(options.network);
+    return this.post(force ? "/forceclose" : "/close", { channelId });
+  }
+
   async importGraph(options = {}) {
     const info = await this.getInfo();
     const network = assertTestnetOnly("eclair", info, options.network);
@@ -57,6 +72,10 @@ export class EclairClient {
       body: formBody(values),
       timeoutMs: this.timeoutMs
     });
+  }
+
+  async assertTestnet(network) {
+    return assertTestnetOnly("eclair", await this.getInfo(), network);
   }
 }
 
