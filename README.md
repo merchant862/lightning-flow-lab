@@ -14,8 +14,7 @@ This is not a wallet. Runtime node adapters are intentionally testnet-only and f
 - Multi-part payment planner that splits around constrained liquidity
 - Lightweight ledger view for Lightning settlement/accounting records
 - Incident analyzer for failed payment attempts and risky channel detection
-- Read-only testnet adapters for LND REST, Core Lightning `lightning-cli`, and Eclair HTTP API
-- Read-only testnet adapter for LDK Server gRPC
+- Testnet graph adapters for LND REST, Core Lightning `lightning-cli`, Eclair HTTP API, and LDK Server gRPC
 - Testnet-only payment, channel-open, cooperative-close, and force-close operations across adapters
 - Small runtime footprint; gRPC dependencies are only used by the LDK Server adapter
 
@@ -25,6 +24,8 @@ This is not a wallet. Runtime node adapters are intentionally testnet-only and f
 npm test
 npm run demo
 ```
+
+These commands run without a Lightning node. They use the checked-in sample graph and local unit tests.
 
 Direct CLI usage:
 
@@ -50,6 +51,8 @@ node src/cli.js quote \
 ## Testnet Node Adapters
 
 The adapter commands import real channel graph data into the same internal `ChannelGraph` model used by the simulator. They are read-only and guarded by network detection. Allowed networks are `testnet`, `testnet3`, `testnet4`, `signet`, and `regtest`; `mainnet` is rejected.
+
+The same adapters also expose explicit testnet write operations for paying invoices and opening or closing channels. A live node, valid credentials, a synced testnet chain backend, and disposable testnet funds are required for those commands.
 
 ### LND REST
 
@@ -201,6 +204,52 @@ const reliability = scoreRouteReliability(paymentAttempts);
 const recommendations = recommendChannelPolicies(graph);
 const prometheus = renderPrometheusMetrics({ graph, attempts: paymentAttempts, settlements });
 ```
+
+## Code Tour
+
+Read the implementation in this order:
+
+1. `src/graph.js`: the shared channel graph, balances, policies, and settlement mutation.
+2. `src/router.js`: backward route search, fee calculation, HTLC/liquidity checks, and settlement.
+3. `src/mpp.js`: multi-part payment planning across constrained paths.
+4. `src/adapters/testnet-guard.js`: fail-closed network validation used before node writes.
+5. `src/adapters/lnd.js`, `src/adapters/cln.js`, `src/adapters/eclair.js`, and `src/adapters/ldk.js`: implementation-specific API clients and graph mappers.
+6. `src/cli.js`: command parsing and adapter selection.
+7. `test/router.test.js` and `test/adapters.test.js`: expected routing, safety, mapping, and analytics behavior.
+
+## Running It Yourself
+
+Run the local verification first:
+
+```bash
+npm install
+npm test
+npm run demo
+node src/cli.js
+```
+
+For a live testnet run, start one supported node and confirm its network using `node-info` or the node's own CLI before importing the graph. Never use a mainnet macaroon, API key, or wallet directory with this project. Secrets are ignored by `.gitignore`; keep them outside the repository.
+
+The write commands are intentionally explicit:
+
+```bash
+# Pay a BOLT11 testnet invoice
+node src/cli.js pay --impl lnd --network testnet \
+  --url https://127.0.0.1:8080 \
+  --macaroon ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon \
+  --invoice lntb1...
+
+# Open a channel with Core Lightning
+node src/cli.js open-channel --impl cln --network testnet \
+  --lightning-cli lightning-cli --peer 02... --amount 100000
+
+# Cooperatively close a channel with Eclair
+node src/cli.js close-channel --impl eclair --network testnet \
+  --url http://127.0.0.1:8080 \
+  --password "$ECLAIR_API_PASSWORD" --channel 123x1x0
+```
+
+Use `--force true` only when a cooperative close cannot complete. Force close may create on-chain fees and timelocks. The repository does not claim a live integration test until a real testnet node is available.
 
 ## License
 
