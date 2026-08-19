@@ -17,7 +17,7 @@ This is not a wallet. Runtime node adapters are intentionally testnet-only and f
 - Read-only testnet adapters for LND REST, Core Lightning `lightning-cli`, and Eclair HTTP API
 - Read-only testnet adapter for LDK Server gRPC
 - Testnet-only payment, channel-open, cooperative-close, and force-close operations across adapters
-- Zero runtime dependencies; runs on Node.js built-ins
+- Small runtime footprint; gRPC dependencies are only used by the LDK Server adapter
 
 ## Quick Start
 
@@ -172,10 +172,10 @@ settleRoute(graph, payment);
 
 ## Roadmap
 
-- Add direct embedded LDK Node Rust bridge support
-- Add payment probes and route reliability scoring
-- Export Prometheus-style metrics for liquidity and routing failure trends
-- Add policy recommendations for rebalancing and fee updates
+- [x] Add dry-run payment probes and route reliability scoring
+- [x] Export Prometheus-style metrics for liquidity and routing failure trends
+- [x] Add channel policy recommendations for rebalancing and fee updates
+- [ ] Add direct embedded LDK Node Rust bridge support
 
 ## API References
 
@@ -183,6 +183,24 @@ settleRoute(graph, payment);
 - Core Lightning `listchannels` returns directed gossip channel entries, and `listpeerchannels` returns local channel state.
 - Eclair exposes HTTP endpoints such as `getinfo`, `allchannels`, `allupdates`, and `usablebalances`.
 - LDK Server exposes authenticated gRPC graph methods such as `GraphListChannels`, `GraphGetChannel`, `GraphListNodes`, and `GraphGetNode`.
+
+## Analytics API
+
+The roadmap analytics are library functions and do not mutate the graph:
+
+```js
+import {
+  probeRoute,
+  recommendChannelPolicies,
+  renderPrometheusMetrics,
+  scoreRouteReliability
+} from "lightning-flow-lab";
+
+const dryRun = probeRoute(graph, { source: "alice", target: "bob", amountMsat: 100_000 });
+const reliability = scoreRouteReliability(paymentAttempts);
+const recommendations = recommendChannelPolicies(graph);
+const prometheus = renderPrometheusMetrics({ graph, attempts: paymentAttempts, settlements });
+```
 
 ## License
 

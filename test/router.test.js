@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ChannelGraph, PaymentLedger, analyzePaymentFailures, planMultiPartPayment, quoteRoute, settleRoute } from "../src/index.js";
+import { ChannelGraph, PaymentLedger, analyzePaymentFailures, planMultiPartPayment, probeRoute, quoteRoute, recommendChannelPolicies, renderPrometheusMetrics, scoreRouteReliability, settleRoute } from "../src/index.js";
 
 function fixture() {
   return ChannelGraph.fromJSON({
@@ -93,4 +93,19 @@ test("surfaces dominant failure channels for incident analysis", () => {
 
   assert.equal(report.failureCodes.TEMPORARY_CHANNEL_FAILURE, 2);
   assert.equal(report.riskyChannels[0].channelId, "ab");
+});
+
+test("roadmap analytics provide dry-run, reliability, policy, and metrics outputs", () => {
+  const graph = ChannelGraph.fromJSON({
+    nodes: [{ id: "a" }, { id: "b" }],
+    channels: [{ id: "a-b", node1: "a", node2: "b", capacityMsat: 1_000_000, balances: { a: 100_000, b: 900_000 } }]
+  });
+  const probe = probeRoute(graph, { source: "a", target: "b", amountMsat: 10_000 });
+  assert.equal(probe.wouldSettle, false);
+  assert.equal(scoreRouteReliability([
+    { success: true, route: [{ channelId: "a-b" }] },
+    { success: false, failureCode: "TEMPORARY_CHANNEL_FAILURE", route: [{ channelId: "a-b" }] }
+  ])[0].reliability, 0.5);
+  assert.equal(recommendChannelPolicies(graph)[0].action, "increase_fee_or_rebalance_outbound");
+  assert.match(renderPrometheusMetrics({ graph, attempts: [{ success: false }] }), /lightning_flow_payment_failures 1/);
 });
